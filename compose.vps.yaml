@@ -1,0 +1,81 @@
+name: miva
+x-backend-image: &backend-image
+  image: miva-backend:${MIVA_RELEASE:-local}
+  build:
+    context: .
+    dockerfile: deploy/Dockerfile.backend
+x-runtime: &runtime
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:size=32m,mode=1777
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options: { max-size: 5m, max-file: '2' }
+x-backend-env: &backend-env
+  env_file:
+    - ${MIVA_ENV_FILE:-./deploy/.env}
+  environment:
+    HTTP_ADDR: :8080
+    MIGRATE_ON_START: 'false'
+    GOMEMLIMIT: 192MiB
+    GOMAXPROCS: '1'
+  extra_hosts:
+    - host.docker.internal:host-gateway
+services:
+  migrate:
+    <<: [*backend-image, *backend-env, *runtime]
+    command: [migrate]
+    restart: 'no'
+    healthcheck: { disable: true }
+    mem_limit: 256m
+    cpus: 0.5
+  backend:
+    <<: [*backend-image, *backend-env, *runtime]
+    restart: unless-stopped
+    command: [serve]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    expose: ['8080']
+    mem_limit: 256m
+    cpus: 0.5
+  frontend:
+    <<: *runtime
+    image: miva-frontend:${MIVA_RELEASE:-local}
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.frontend
+    restart: unless-stopped
+    depends_on:
+      backend: { condition: service_healthy }
+    ports:
+      - '${FRONTEND_BIND:-127.0.0.1}:${FRONTEND_PORT:-5180}:8080'
+    mem_limit: 64m
+    cpus: 0.5
+  db-backup:
+    image: ${POSTGRES_TOOLS_IMAGE:-postgres:18-alpine}
+    profiles: [tools]
+    restart: 'no'
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      PGHOST: ${DB_HOST:?Set DB_HOST in deploy/.env}
+      PGPORT: ${DB_PORT:-5432}
+      PGDATABASE: ${DB_NAME:?Set DB_NAME in deploy/.env}
+      PGUSER: ${DB_USER:?Set DB_USER in deploy/.env}
+      PGPASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in deploy/.env}
+      PGSSLMODE: ${DB_SSLMODE:-disable}
+      PGCONNECT_TIMEOUT: '10'
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - |
+        exists=$$(psql -X -A -t -v ON_ERROR_STOP=1 -c "SELECT 1 FROM pg_namespace WHERE nspname='english_app'")
+        if [ "$$exists" = "1" ]; then
+          exec pg_dump --format=custom --schema=english_app --no-owner --no-acl
+        fi

@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+backend/.env
+node_modules/
+frontend/dist/
+backend/english-app
+coverage*
+.DS_Store
+deploy/backups/
+deploy/.deploy*
+backend/.qa-stop
+__pycache__/
+
+.venv/

@@ -1,0 +1,12 @@
+# Add when PostgreSQL already runs in another Docker Compose network.
+services:
+  backend:
+    networks: [default, database]
+  migrate:
+    networks: [default, database]
+  db-backup:
+    networks: [default, database]
+networks:
+  database:
+    external: true
+    name: ${DB_NETWORK:?Set DB_NETWORK to the existing PostgreSQL Docker network}

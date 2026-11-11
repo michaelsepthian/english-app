@@ -1,0 +1,14 @@
+.git
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/.DS_Store
+**/*.test
+**/backups
+**/.deploy*
+**/__pycache__
+outputs
+.gitnexus
+.claude
+.github

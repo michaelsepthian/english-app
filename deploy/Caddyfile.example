@@ -1,0 +1,4 @@
+# Optional host reverse proxy. Replace this hostname with your own domain.
+miva.example.com {
+    reverse_proxy 127.0.0.1:5180
+}

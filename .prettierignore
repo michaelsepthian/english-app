@@ -1,0 +1,15 @@
+node_modules/
+**/node_modules/
+**/dist/
+.git/
+.gitnexus/
+.claude/
+outputs/
+AGENTS.md
+CLAUDE.md
+**/.env
+**/.env.*
+**/migrations/*.sql
+**/backups/
+**/__pycache__/
+.venv/

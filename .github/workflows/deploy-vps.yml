@@ -1,0 +1,72 @@
+name: Deploy Miva to VPS
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: miva-vps-production
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check code formatting
+        run: |
+          npm --prefix frontend ci --no-audit --no-fund
+          npm --prefix frontend run format:check
+          python3 -m pip install -r requirements-dev.txt
+          python3 -m black --check scripts
+      - name: Test deployment script
+        run: python3 -m unittest discover -s scripts/tests -v
+      - name: Test Go without production credentials
+        run: docker run --rm -v "$PWD/backend:/src" -w /src golang:1.26-alpine sh -c 'go test ./... && go vet ./...'
+      - name: Check frontend
+        run: docker build -f deploy/Dockerfile.frontend -t miva-frontend:ci .
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare verified SSH credentials
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          for key in ('VPS_SSH_KEY', 'VPS_SSH_KNOWN_HOSTS'):
+              if not os.environ.get(key):
+                  raise SystemExit(f'Set secret {key} in the production environment first.')
+          ssh = Path.home() / '.ssh'
+          ssh.mkdir(mode=0o700, exist_ok=True)
+          for name, source in (('miva_deploy_key', 'VPS_SSH_KEY'), ('known_hosts', 'VPS_SSH_KNOWN_HOSTS')):
+              path = ssh / name
+              path.write_text(os.environ[source] + '\n')
+              path.chmod(0o600)
+          PY
+      - name: Deploy release over SSH
+        env:
+          VPS_HOST: ${{ vars.VPS_HOST }}
+          VPS_USER: ${{ vars.VPS_USER }}
+          VPS_SSH_PORT: ${{ vars.VPS_SSH_PORT }}
+          VPS_DEPLOY_DIR: ${{ vars.VPS_DEPLOY_DIR }}
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          for key in ('VPS_HOST', 'VPS_USER'):
+              if not os.environ.get(key):
+                  raise SystemExit(f'Set variable {key} first.')
+          subprocess.run(['python3', 'scripts/deploy.py',
+              '--host', os.environ['VPS_USER'] + '@' + os.environ['VPS_HOST'],
+              '--identity', os.path.expanduser('~/.ssh/miva_deploy_key'),
+              '--ssh-port', os.environ.get('VPS_SSH_PORT') or '22',
+              '--remote-dir', os.environ.get('VPS_DEPLOY_DIR') or '/opt/miva'], check=True)
+          PY
+      - name: Remove temporary key
+        if: always()
+        run: rm -f ~/.ssh/miva_deploy_key
