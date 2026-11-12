@@ -104,7 +104,10 @@
   ];
   // Derived UI values; the backend still validates all submitted counts.
   $: minimum =
-    planner.reading + planner.listening + planner.tenses.length + (planner.vocabulary > 0 ? 1 : 0);
+    (Number(planner.reading) || 0) +
+    (Number(planner.listening) || 0) +
+    planner.tenses.length +
+    (Number(planner.vocabulary) > 0 ? 1 : 0);
   $: estimatedMinutes = Math.round(
     planner.vocabulary * 0.7 +
       planner.tenses.length * 6 +
@@ -289,9 +292,9 @@
     await navigate('plan');
   }
   function togglePart(part) {
-    if (part === 'vocabulary') planner = { ...planner, vocabulary: planner.vocabulary ? 0 : 5 };
-    if (part === 'reading') planner = { ...planner, reading: planner.reading ? 0 : 1 };
-    if (part === 'listening') planner = { ...planner, listening: planner.listening ? 0 : 1 };
+    if (part === 'vocabulary') planner = { ...planner, vocabulary: planner.vocabulary === 0 ? 5 : 0 };
+    if (part === 'reading') planner = { ...planner, reading: planner.reading === 0 ? 1 : 0 };
+    if (part === 'listening') planner = { ...planner, listening: planner.listening === 0 ? 1 : 0 };
     if (part === 'tenses')
       planner = { ...planner, tenses: planner.tenses.length ? [] : [user.tense] };
     fixQuestions();
@@ -306,13 +309,16 @@
   }
   function fixQuestions() {
     const min =
-      planner.reading +
-      planner.listening +
+      (Number(planner.reading) || 0) +
+      (Number(planner.listening) || 0) +
       planner.tenses.length +
-      (planner.vocabulary > 0 ? 1 : 0);
+      (Number(planner.vocabulary) > 0 ? 1 : 0);
     planner = {
       ...planner,
-      questions: Math.max(min || 1, Math.min(30, Number(planner.questions) || 1)),
+      questions:
+        planner.questions == null || planner.questions === ''
+          ? planner.questions
+          : Math.max(min || 1, Math.min(30, Number(planner.questions))),
     };
     requestId = '';
   }
