@@ -1,3 +1,5 @@
 /* MIVA-UI: preserve this import order so responsive overrides remain stable. */
 @import './styles/foundation.css';
 @import './styles/theme.css';
+
+@import './styles/chat.css';

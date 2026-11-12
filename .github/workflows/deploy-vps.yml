@@ -2,7 +2,7 @@ name: Deploy Miva to VPS
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [master]
 permissions:
   contents: read
 concurrency:

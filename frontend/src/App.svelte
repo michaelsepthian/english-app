@@ -8,6 +8,7 @@
   import ChatPage from './pages/ChatPage.svelte';
   import SettingsPage from './pages/SettingsPage.svelte';
   import AudioPlayer from './components/AudioPlayer.svelte';
+  import ChatVoiceSettings from './components/ChatVoiceSettings.svelte';
   import { onMount, onDestroy, tick } from 'svelte';
   import {
     Sprout,
@@ -65,11 +66,16 @@
   // Draft persistence and active-study timing (MIVA-STUDY).
   let pronunciationAvailable = false,
     chatText = '',
-    chatEnd,
+    pendingChat = '',
+    failedChats = [],
     draftChain = Promise.resolve(),
     draftError = false,
     heartbeatId = '',
     heartbeatTimer;
+  let chatKeyboardOpen = false,
+    chatViewportHeight = '',
+    chatViewportTop = 0;
+  $: failedChat = failedChats[0] || '';
   // Device speech playback and dictation (MIVA-AUDIO).
   let speechAvailable = false,
     voices = [],
@@ -83,6 +89,7 @@
     playerOpen = false;
   let recognizer = null,
     recording = false,
+    dictationStopping = false,
     recordSeconds = 0,
     recordClock,
     recordTimer,
@@ -258,6 +265,8 @@
       job = null;
       words = [];
       messages = [];
+      pendingChat = '';
+      failedChats = [];
       page = 'home';
       chatText = '';
     } catch (e) {
@@ -272,7 +281,6 @@
     if (next === 'profile') profile = structuredClone(user);
     await tick();
     window.scrollTo({ top: 0, behavior: 'instant' });
-    if (next === 'chat') chatEnd?.scrollIntoView({ block: 'nearest' });
   }
   // MIVA-PLAN: select material, prepare it on the server, then poll its job.
   async function openPlanner() {
@@ -570,49 +578,97 @@
   async function send(text = chatText) {
     text = text.trim();
     if (!text || busy || recording) return;
+    if (text.length > 2000) {
+      showError(new Error('Pesan maksimal 2.000 karakter. Persingkat sebelum mengirim.'));
+      return;
+    }
+    const accountId = user?.id;
     busy = 'chat';
     error = '';
+    pendingChat = text;
+    chatText = '';
     try {
-      messages = (await api('chat', { method: 'POST', body: { text } })).messages;
-      chatText = '';
-      await tick();
-      chatEnd?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const result = await api('chat', { method: 'POST', body: { text } });
+      if (user?.id === accountId) messages = result.messages;
     } catch (e) {
-      showError(e);
+      if (user?.id === accountId) {
+        if (!chatText.trim()) chatText = text;
+        else failedChats = [...failedChats, text];
+        showError(e);
+      }
     } finally {
+      pendingChat = '';
       busy = '';
     }
   }
+  function restoreFailedChat() {
+    if (busy || recording || !failedChat) return;
+    if (chatText.trim()) {
+      flash('Kosongkan atau kirim draft saat ini sebelum memulihkan pesan.');
+      return;
+    }
+    chatText = failedChat;
+    failedChats = failedChats.slice(1);
+  }
+  function stopDictation() {
+    if (!recognizer || dictationStopping) return;
+    dictationStopping = true;
+    recognizer.stop();
+  }
   function startDictation() {
+    if (busy || recording || page !== 'chat') return;
     if (!recognitionAvailable) {
       flash('Dikte belum tersedia. Kamu tetap bisa mengetik pesan.');
       return;
     }
+    stopSpeech();
+    const draft = chatText.trim();
+    const results = new Map();
+    let finished = false;
     try {
       const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognizer = new Recognition();
-      recognizer.lang = dictationLang;
-      recognizer.interimResults = false;
-      recognizer.onresult = (e) => {
-        chatText = (
-          chatText +
-          ' ' +
-          Array.from(e.results)
-            .map((r) => r[0].transcript)
-            .join(' ')
-        ).trim();
-        cleanupRecording();
+      const session = new Recognition();
+      recognizer = session;
+      session.lang = dictationLang === 'id-ID' ? 'id-ID' : 'en-US';
+      session.continuous = false;
+      session.interimResults = false;
+      session.onresult = (event) => {
+        if (finished || recognizer !== session) return;
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) results.set(i, event.results[i][0].transcript.trim());
+        }
+        const transcript = [...results.values()].join(' ').trim();
+        chatText = [draft, transcript].filter(Boolean).join(' ');
       };
-      recognizer.onend = cleanupRecording;
-      recognizer.onerror = () => {
-        cleanupRecording();
-        flash('Ucapan belum terbaca. Coba lagi di tempat tenang.');
+      session.onspeechend = () => {
+        if (!finished && recognizer === session) stopDictation();
       };
-      recognizer.start();
+      session.onend = () => {
+        if (finished || recognizer !== session) return;
+        finished = true;
+        const transcript = [...results.values()].join(' ').trim();
+        cleanupRecording();
+        if (transcript && page === 'chat') send(chatText);
+        else flash('Ucapan belum terbaca. Coba bicara lagi.');
+      };
+      session.onerror = (event) => {
+        if (finished || recognizer !== session) return;
+        finished = true;
+        cleanupRecording();
+        flash(
+          event.error === 'not-allowed' || event.error === 'service-not-allowed'
+            ? 'Izinkan mikrofon atau lanjutkan dengan mengetik.'
+            : 'Ucapan belum terbaca. Coba lagi di tempat tenang.'
+        );
+      };
       recording = true;
+      dictationStopping = false;
       recordSeconds = 0;
+      session.start();
       recordClock = setInterval(() => recordSeconds++, 1000);
-      recordTimer = setTimeout(() => recognizer?.stop(), 60000);
+      recordTimer = setTimeout(() => {
+        if (recognizer === session) stopDictation();
+      }, 60000);
     } catch {
       cleanupRecording();
       flash('Izinkan mikrofon atau lanjutkan dengan mengetik.');
@@ -622,13 +678,16 @@
     clearTimeout(recordTimer);
     clearInterval(recordClock);
     if (recognizer) {
-      recognizer.onend = null;
-      recognizer.onerror = null;
-      recognizer.onresult = null;
-      recognizer.abort();
+      const session = recognizer;
       recognizer = null;
+      session.onend = null;
+      session.onerror = null;
+      session.onresult = null;
+      session.onspeechend = null;
+      session.abort();
     }
     recording = false;
+    dictationStopping = false;
   }
   // MIVA-GOAL: account targets and calendar export.
   function toggleDay(i) {
@@ -694,7 +753,13 @@
 {:else if !user}
   <AuthPage bind:register bind:email bind:password bind:name bind:error {busy} {authenticate} />
 {:else}
-  <div class="app-shell">
+  <div
+    class="app-shell"
+    class:chat-active={page === 'chat'}
+    class:chat-keyboard-open={page === 'chat' && chatKeyboardOpen}
+    style:--chat-viewport-height={chatViewportHeight || '100dvh'}
+    style:--chat-viewport-top={`${chatViewportTop}px`}
+  >
     <aside class="sidebar">
       <a class="brand" href="#home" on:click|preventDefault={() => navigate('home')}>
         <span class="brand-mark"><Sprout size={28} /></span>
@@ -767,7 +832,7 @@
         </div>
       </header>
       <div class="content">
-        {#if error}
+        {#if error && page !== 'chat'}
           <div class="alert enter" role="alert">
             <AlertCircle size={21} />
             <span>{error}</span>
@@ -840,18 +905,41 @@
         {:else if page === 'chat'}
           <ChatPage
             {messages}
+            {pendingChat}
+            {failedChat}
+            {restoreFailedChat}
             {busy}
             bind:chatText
-            bind:chatEnd
+            bind:keyboardOpen={chatKeyboardOpen}
+            bind:viewportHeight={chatViewportHeight}
+            bind:viewportTop={chatViewportTop}
+            {error}
+            dismissError={() => (error = '')}
             {recording}
             {recordSeconds}
             {recognitionAvailable}
-            bind:dictationLang
-            {recognizer}
+            {stopDictation}
             {send}
             {speak}
             {startDictation}
-          />
+          >
+            <svelte:fragment slot="settings">
+              <ChatVoiceSettings
+                bind:dictationLang
+                {recording}
+                {speechAvailable}
+                {audioText}
+                {speaking}
+                {paused}
+                bind:voiceName
+                bind:speechRate
+                {voices}
+                {speak}
+                {stopSpeech}
+                {pauseSpeech}
+              />
+            </svelte:fragment>
+          </ChatPage>
         {:else if page === 'profile' && profile}
           <SettingsPage
             bind:profile
@@ -872,7 +960,7 @@
       </div>
     </main>
 
-    {#if playerOpen && audioText}
+    {#if playerOpen && audioText && page !== 'chat'}
       <AudioPlayer
         {audioText}
         bind:playerOpen

@@ -97,7 +97,7 @@ Harga atau saldo provider tidak dipalsukan menjadi estimasi pemakaian aktual di 
 - Kamus Inggris/Indonesia dengan arti, IPA, Verb 1–2–3, contoh dan terjemahan. Dua belas verb awal tersedia tanpa key.
 - Tutor bilingual untuk role-play, percakapan dan koreksi ringan.
 - Suara perangkat untuk kata, setiap bentuk verb, contoh kalimat, listening, dan balasan tutor. Pilih suara Inggris, kecepatan, ulangi/jeda/hentikan. Kualitas serta ketersediaan bergantung browser dan suara perangkat; sebagian suara dapat memakai layanan vendor.
-- Dikte bahasa Inggris/Indonesia jika SpeechRecognition didukung browser. Periksa hasil sebelum dikirim. Jika tidak didukung, gunakan teks. Reading menyediakan mode kecocokan kata, dengan opsi layanan pemeriksaan rekaman sebagaimana dijelaskan di bawah.
+- Dikte bahasa Inggris/Indonesia jika SpeechRecognition didukung browser. Pada chat, hasil ucapan digabung dengan draft lalu otomatis dikirim setelah selesai bicara. Pilihan bahasa dan kontrol playback tersedia melalui tombol pengaturan di sebelah mikrofon. Jika tidak didukung, gunakan teks. Reading menyediakan mode kecocokan kata, dengan opsi layanan pemeriksaan rekaman sebagaimana dijelaskan di bawah.
 - Pengingat kalender .ics berulang untuk Google/Apple/Outlook. Impor dan aktifkan notifikasi di kalender. Saat mengganti jadwal, perbarui acara lama agar tidak ganda.
 - Statistik berdasarkan pelajaran yang selesai. Waktu halaman pelajaran aktif dicatat lewat heartbeat server dan masuk statistik setelah submit.
 
