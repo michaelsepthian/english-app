@@ -82,11 +82,11 @@
       <button class="text-btn" type="button" on:click={() => navigate('profile')}>Ubah</button>
     </div>
     <div class="plan-grid">
-      <section class="panel plan-card" class:chosen={planner.vocabulary > 0}>
+      <section class="panel plan-card" class:chosen={planner.vocabulary !== 0}>
         <button
           class="plan-toggle"
           type="button"
-          aria-pressed={planner.vocabulary > 0}
+          aria-pressed={planner.vocabulary !== 0}
           on:click={() => togglePart('vocabulary')}
         >
           <span class="plan-icon"><Library size={25} /></span>
@@ -95,13 +95,13 @@
             <small>Kata baru, banyak konteks.</small>
           </span>
           <span class="check-box">
-            {#if planner.vocabulary > 0}
+            {#if planner.vocabulary !== 0}
               <Check size={18} />
             {/if}
           </span>
         </button>
 
-        {#if planner.vocabulary > 0}
+        {#if planner.vocabulary !== 0}
           <label for="word-count">Berapa kata ingin dipelajari?</label>
           <div class="count-input">
             <input
@@ -158,11 +158,11 @@
           </p>
         {/if}
       </section>
-      <section class="panel plan-card" class:chosen={planner.reading > 0}>
+      <section class="panel plan-card" class:chosen={planner.reading !== 0}>
         <button
           class="plan-toggle"
           type="button"
-          aria-pressed={planner.reading > 0}
+          aria-pressed={planner.reading !== 0}
           on:click={() => togglePart('reading')}
         >
           <span class="plan-icon lavender"><BookOpen size={25} /></span>
@@ -171,13 +171,13 @@
             <small>Baca cerita, berani bersuara.</small>
           </span>
           <span class="check-box">
-            {#if planner.reading > 0}
+            {#if planner.reading !== 0}
               <Check size={18} />
             {/if}
           </span>
         </button>
 
-        {#if planner.reading > 0}
+        {#if planner.reading !== 0}
           <label for="reading-count">Berapa bacaan hari ini?</label>
           <div class="count-input">
             <input
@@ -196,11 +196,11 @@
           </p>
         {/if}
       </section>
-      <section class="panel plan-card" class:chosen={planner.listening > 0}>
+      <section class="panel plan-card" class:chosen={planner.listening !== 0}>
         <button
           class="plan-toggle"
           type="button"
-          aria-pressed={planner.listening > 0}
+          aria-pressed={planner.listening !== 0}
           on:click={() => togglePart('listening')}
         >
           <span class="plan-icon blue"><Headphones size={25} /></span>
@@ -209,13 +209,13 @@
             <small>Dengarkan, lalu pahami ceritanya.</small>
           </span>
           <span class="check-box">
-            {#if planner.listening > 0}
+            {#if planner.listening !== 0}
               <Check size={18} />
             {/if}
           </span>
         </button>
 
-        {#if planner.listening > 0}
+        {#if planner.listening !== 0}
           <label for="listening-count">Berapa bahan ingin didengarkan?</label>
           <div class="count-input">
             <input
@@ -267,7 +267,7 @@
           <small>Belajar sesuai ritmemu. Bisa dijeda.</small>
         </span>
       </div>
-      <button class="primary" disabled={!!busy || !minimum}>
+      <button class="primary" disabled={!!busy}>
         {#if busy === 'prepare'}
           <LoaderCircle size={19} class="spin" /> Menyiapkan…
         {:else}
