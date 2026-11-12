@@ -313,13 +313,13 @@
       (Number(planner.listening) || 0) +
       planner.tenses.length +
       (Number(planner.vocabulary) > 0 ? 1 : 0);
-    planner = {
-      ...planner,
-      questions:
-        planner.questions == null || planner.questions === ''
-          ? planner.questions
-          : Math.max(min || 1, Math.min(30, Number(planner.questions))),
-    };
+    const questions = planner.questions;
+    if (questions != null && questions !== '') {
+      planner = {
+        ...planner,
+        questions: Math.max(min || 1, Math.min(30, Number(questions))),
+      };
+    }
     requestId = '';
   }
   async function prepare() {
