@@ -292,7 +292,8 @@
     await navigate('plan');
   }
   function togglePart(part) {
-    if (part === 'vocabulary') planner = { ...planner, vocabulary: planner.vocabulary === 0 ? 5 : 0 };
+    if (part === 'vocabulary')
+      planner = { ...planner, vocabulary: planner.vocabulary === 0 ? 5 : 0 };
     if (part === 'reading') planner = { ...planner, reading: planner.reading === 0 ? 1 : 0 };
     if (part === 'listening') planner = { ...planner, listening: planner.listening === 0 ? 1 : 0 };
     if (part === 'tenses')
