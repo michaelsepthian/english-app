@@ -88,7 +88,7 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	uid := u.ID
-	if route == "lesson/prepare" || route == "lesson/job" || route == "lesson/review" {
+	if route == "lesson/prepare" || route == "lesson/job" || route == "lesson/job/resume" || route == "lesson/review" {
 		return s.studyAPI(w, r, uid, route)
 	}
 	if strings.HasPrefix(route, "reading/") {

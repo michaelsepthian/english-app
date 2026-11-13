@@ -92,7 +92,12 @@ func (l Lesson) TenseItems() []TenseItem {
 	return []TenseItem{}
 }
 
-func (l Lesson) validatePlan() error {
+func (l Lesson) validatePlan() error { return l.validatePreparation(true) }
+
+// ValidatePreparation validates accumulated parts before committing a checkpoint.
+func (l Lesson) ValidatePreparation() error { return l.validatePreparation(false) }
+
+func (l Lesson) validatePreparation(complete bool) error {
 	p := l.Plan
 	if p == nil {
 		return errors.New("Rencana belajar belum tersedia.")
@@ -100,7 +105,10 @@ func (l Lesson) validatePlan() error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
-	if len(l.Title) < 3 || len(l.Vocabulary) != p.Vocabulary || len(l.Tenses) != len(p.Tenses) || len(l.Readings) != p.Reading || len(l.Listenings) != p.Listening || len(l.Questions) != p.Questions {
+	if len(l.Vocabulary) > p.Vocabulary || len(l.Tenses) > len(p.Tenses) || len(l.Readings) > p.Reading || len(l.Listenings) > p.Listening || len(l.Questions) > p.Questions {
+		return errors.New("Jumlah materi melebihi rencana.")
+	}
+	if complete && (len(l.Title) < 3 || len(l.Vocabulary) != p.Vocabulary || len(l.Tenses) != len(p.Tenses) || len(l.Readings) != p.Reading || len(l.Listenings) != p.Listening || len(l.Questions) != p.Questions) {
 		return errors.New("Jumlah materi belum sesuai rencana. Silakan coba lagi.")
 	}
 	sources := map[string]string{}
@@ -160,6 +168,9 @@ func (l Lesson) validatePlan() error {
 		}
 		ids[q.ID] = true
 		covered[q.SourceID] = true
+	}
+	if !complete {
+		return nil
 	}
 	for source := range sources {
 		if !covered[source] {

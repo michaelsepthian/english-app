@@ -25,6 +25,8 @@
   export let toggleTense;
   export let fixQuestions;
   export let prepare;
+  export let resumePreparation;
+  export let newPreparation;
 </script>
 
 <div class="heading">
@@ -46,7 +48,7 @@
 </div>
 
 {#if job && ['queued', 'running'].includes(job.status)}
-  <section class="panel preparation">
+  <section class="panel preparation" aria-live="polite">
     <div class="prep-orb">
       <Sprout size={43} />
       <span></span>
@@ -60,16 +62,40 @@
     </p>
     <div class="progress-track"><div style:width={`${Math.max(5, job.progress)}%`}></div></div>
     <strong>{job.progress}%</strong>
+    <p>{job.goal || user.goal} · Level {job.level || user.level}</p>
     <div class="prep-summary">
-      <span>{planner.vocabulary} kosakata</span>
-      <span>{planner.tenses.length} tenses</span>
-      <span>{planner.reading} bacaan</span>
-      <span>{planner.listening} listening</span>
-      <span>{planner.questions} soal</span>
+      <span>{job.plan.vocabulary} kosakata</span>
+      <span>{job.plan.tenses.length} tenses</span>
+      <span>{job.plan.reading} bacaan</span>
+      <span>{job.plan.listening} listening</span>
+      <span>{job.plan.questions} soal</span>
     </div>
     <p class="caption">
       Kamu boleh membuka halaman lain. Sesi akan tersedia setelah selesai disiapkan.
     </p>
+  </section>
+{:else if job?.status === 'failed'}
+  <section class="panel preparation" aria-live="polite">
+    <span class="eyebrow">PROGRES PERSIAPAN TERSIMPAN</span>
+    <h2>Persiapan belum selesai</h2>
+    <p>{job.error}</p>
+    <div class="progress-track"><div style:width={`${job.progress}%`}></div></div>
+    <strong>{job.progress}%</strong>
+    <p>{job.goal || user.goal} · Level {job.level || user.level}</p>
+    <div class="prep-summary">
+      <span>{job.plan.vocabulary} kosakata</span>
+      <span>{job.plan.tenses.join(', ') || 'Tanpa tenses'}</span>
+      <span>{job.plan.reading} bacaan</span>
+      <span>{job.plan.listening} listening</span>
+      <span>{job.plan.questions} soal</span>
+    </div>
+    {#if job.canResume}
+      <button class="primary" on:click={resumePreparation} disabled={!!busy}>
+        {#if busy === 'resume'}<LoaderCircle size={19} class="spin" />{/if}
+        Lanjutkan persiapan
+      </button>
+    {/if}
+    <button class="secondary" on:click={newPreparation} disabled={!!busy}>Buat rencana baru</button>
   </section>
 {:else}
   <form class="planner-form" on:submit|preventDefault={prepare}>

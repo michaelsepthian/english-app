@@ -210,11 +210,11 @@
         if (user) {
           await refresh();
           const result = await api('lesson/job');
-          if (result.job && ['queued', 'running'].includes(result.job.status)) {
+          if (result.job && ['queued', 'running', 'failed'].includes(result.job.status)) {
             job = result.job;
             planner = job.plan;
             page = 'plan';
-            watchJob();
+            if (job.status !== 'failed') watchJob();
           }
         }
       } catch (e) {
@@ -349,6 +349,25 @@
     } finally {
       busy = '';
     }
+  }
+  async function resumePreparation() {
+    if (busy || !job?.canResume) return;
+    busy = 'resume';
+    error = '';
+    try {
+      job = (await api('lesson/job/resume', { method: 'POST', body: { id: job.id } })).job;
+      planner = structuredClone(job.plan);
+      watchJob();
+    } catch (e) {
+      showError(e);
+    } finally {
+      busy = '';
+    }
+  }
+  function newPreparation() {
+    job = null;
+    requestId = '';
+    error = '';
   }
   function watchJob() {
     clearInterval(jobTimer);
@@ -866,6 +885,8 @@
             {toggleTense}
             {fixQuestions}
             {prepare}
+            {resumePreparation}
+            {newPreparation}
           />
         {:else if page === 'study' && lesson}
           <StudyPage

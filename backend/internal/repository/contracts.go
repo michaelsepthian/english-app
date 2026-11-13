@@ -3,6 +3,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -45,7 +46,11 @@ type Messages interface {
 type Jobs interface {
 	Find(context.Context, string, string) (*model.StudyJob, error)
 	FindByRequest(context.Context, string, string) (*model.StudyJob, error)
-	Create(context.Context, string, string, model.StudyPlan) error
+	Create(context.Context, string, string, model.StudyPlan, model.Settings) error
+	Requeue(context.Context, string, string, model.Settings) (bool, error)
+	Checkpoints(context.Context, string, string) (map[string]json.RawMessage, error)
+	SaveCheckpoint(context.Context, string, string, string, json.RawMessage, int) error
+	Attempt(context.Context, string, string, string, int, int) error
 	Claim(context.Context, string, string) (bool, error)
 	Progress(context.Context, string, string, string, int) error
 	Fail(context.Context, string, string, string) error

@@ -35,6 +35,16 @@ func (s *Server) studyAPI(w http.ResponseWriter, r *http.Request, uid, route str
 			status = 202
 		}
 		writeJSON(w, status, map[string]any{"job": job})
+	case "POST lesson/job/resume":
+		var in model.IDRequest
+		if err := decode(w, r, &in); err != nil {
+			return err
+		}
+		job, err := s.Services.Studies.Resume(ctx, uid, in.ID)
+		if err != nil {
+			return err
+		}
+		writeJSON(w, 202, map[string]any{"job": job})
 	case "POST lesson/review":
 		var in model.IDRequest
 		if err := decode(w, r, &in); err != nil {

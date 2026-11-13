@@ -105,4 +105,7 @@ func Run() {
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = httpServer.Shutdown(ctx)
+	if err := services.Studies.Shutdown(ctx); err != nil {
+		slog.Warn("Worker belum berhenti sebelum shutdown")
+	}
 }

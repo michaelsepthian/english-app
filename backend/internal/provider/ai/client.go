@@ -38,12 +38,12 @@ func (a *OpenAI) request(ctx context.Context, path, contentType string, body io.
 	req.Header.Set("Content-Type", contentType)
 	r, err := a.HTTP.Do(req)
 	if err != nil {
-		return nil, apperror.NewError(502, "Tidak dapat terhubung ke penyedia AI. Periksa koneksi dan Base URL.")
+		return nil, &requestError{cause: err, message: "Tidak dapat terhubung ke penyedia AI. Periksa koneksi dan Base URL."}
 	}
 	defer r.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(r.Body, 2*1024*1024))
 	if err != nil {
-		return nil, err
+		return nil, &requestError{cause: err, status: r.StatusCode, message: "Respons penyedia AI terputus."}
 	}
 	if r.StatusCode >= 300 {
 		message := "Layanan AI belum tersedia. Periksa Base URL, nama model, dan akses akun penyedia."
@@ -53,7 +53,7 @@ func (a *OpenAI) request(ctx context.Context, path, contentType string, body io.
 		if r.StatusCode == 429 || r.StatusCode == 402 {
 			message = "Saldo atau batas pemakaian penyedia AI tercapai. Periksa akun API."
 		}
-		return nil, apperror.NewError(502, message)
+		return nil, &requestError{status: r.StatusCode, message: message}
 	}
 	return raw, nil
 }
